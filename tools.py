@@ -1,6 +1,5 @@
-from torch.utils.data import Dataset, DataLoader, TensorDataset
-import torch.nn as nn
-import torch
+# loadbasic library
+import pickle
 import csv
 import pandas as pd
 import numpy as np
@@ -8,10 +7,26 @@ from sklearn.utils import shuffle
 from sklearn import metrics
 from sklearn.model_selection import StratifiedKFold
 import matplotlib.pyplot as plt
+
 plt.rcParams["figure.figsize"] = (12, 8)
 
+# load torch library
+from torch.utils.data import Dataset, DataLoader, TensorDataset
+import torch.nn as nn
+import torch
 
-def train_model(model, train_dataloader, validation_dataloader, optimizer, N_train, N_test, device, scheduler, epochs=4):
+
+def train_model(
+    model,
+    train_dataloader,
+    validation_dataloader,
+    optimizer,
+    N_train,
+    N_test,
+    device,
+    scheduler,
+    epochs=4,
+):
     """
     train the BERT model.
 
@@ -23,9 +38,18 @@ def train_model(model, train_dataloader, validation_dataloader, optimizer, N_tra
     """
 
     useful_stuff = {
-        'training_loss': [], 'training_acc': [], 'training_auc': [], 'training_metric': [],
-        'train_loss': [], 'train_acc': [], 'train_auc': [], 'train_metric': [],
-        'valid_loss': [], 'valid_acc': [], 'valid_auc': [], 'valid_metric': [],
+        "training_loss": [],
+        "training_acc": [],
+        "training_auc": [],
+        "training_metric": [],
+        "train_loss": [],
+        "train_acc": [],
+        "train_auc": [],
+        "train_metric": [],
+        "valid_loss": [],
+        "valid_acc": [],
+        "valid_auc": [],
+        "valid_metric": [],
     }
 
     for epoch in range(epochs):
@@ -45,8 +69,7 @@ def train_model(model, train_dataloader, validation_dataloader, optimizer, N_tra
             b_labels = batch[2].to(device)
 
             model.zero_grad()
-            output = model(
-                b_input_ids, attention_mask=b_input_mask, labels=b_labels)
+            output = model(b_input_ids, attention_mask=b_input_mask, labels=b_labels)
             loss = output[0]
             logits = output[1]
             loss.backward()
@@ -76,14 +99,14 @@ def train_model(model, train_dataloader, validation_dataloader, optimizer, N_tra
         acc_ = correct / N_train
         loss_ = training_loss / len(train_dataloader)
 
-        useful_stuff['training_loss'].append(loss_)
-        useful_stuff['training_acc'].append(acc_)
-        useful_stuff['training_metric'].append((TP, FP, TN, FN))
-        useful_stuff['training_auc'].append(auc)
+        useful_stuff["training_loss"].append(loss_)
+        useful_stuff["training_acc"].append(acc_)
+        useful_stuff["training_metric"].append((TP, FP, TN, FN))
+        useful_stuff["training_auc"].append(auc)
 
         print("training loss: {0:.2f}".format(loss_))
         print("training acc: {0:.2f}".format(acc_))
-        print('-' * 10)
+        print("-" * 10)
 
         # train metirc ===================================
         model.eval()
@@ -102,7 +125,8 @@ def train_model(model, train_dataloader, validation_dataloader, optimizer, N_tra
 
             with torch.no_grad():
                 output = model(
-                    b_input_ids, attention_mask=b_input_mask, labels=b_labels)
+                    b_input_ids, attention_mask=b_input_mask, labels=b_labels
+                )
                 loss = output[0]
                 logits = output[1]
 
@@ -126,14 +150,14 @@ def train_model(model, train_dataloader, validation_dataloader, optimizer, N_tra
         acc_ = correct / N_train
         loss_ = train_loss / len(train_dataloader)
 
-        useful_stuff['train_loss'].append(loss_)
-        useful_stuff['train_acc'].append(acc_)
-        useful_stuff['train_metric'].append((TP, FP, TN, FN))
-        useful_stuff['train_auc'].append(auc)
+        useful_stuff["train_loss"].append(loss_)
+        useful_stuff["train_acc"].append(acc_)
+        useful_stuff["train_metric"].append((TP, FP, TN, FN))
+        useful_stuff["train_auc"].append(auc)
 
         print("train loss: {0:.2f}".format(loss_))
         print("train acc: {0:.2f}".format(acc_))
-        print('-' * 10)
+        print("-" * 10)
 
         # Validation========================================
         model.eval()
@@ -152,7 +176,8 @@ def train_model(model, train_dataloader, validation_dataloader, optimizer, N_tra
 
             with torch.no_grad():
                 output = model(
-                    b_input_ids, attention_mask=b_input_mask, labels=b_labels)
+                    b_input_ids, attention_mask=b_input_mask, labels=b_labels
+                )
                 loss = output[0]
                 logits = output[1]
 
@@ -177,15 +202,15 @@ def train_model(model, train_dataloader, validation_dataloader, optimizer, N_tra
         acc_ = correct / N_test
         loss_ = cv_loss / len(validation_dataloader)
 
-        useful_stuff['valid_loss'].append(loss_)
-        useful_stuff['valid_acc'].append(acc_)
-        useful_stuff['valid_metric'].append((TP, FP, TN, FN))
-        useful_stuff['valid_auc'].append(auc)
+        useful_stuff["valid_loss"].append(loss_)
+        useful_stuff["valid_acc"].append(acc_)
+        useful_stuff["valid_metric"].append((TP, FP, TN, FN))
+        useful_stuff["valid_auc"].append(auc)
 
         print("valid loss: {0:.2f}".format(loss_))
         print("valid acc: {0:.2f}".format(acc_))
 
-        print('=' * 20)
+        print("=" * 20)
 
     return useful_stuff
 
@@ -197,41 +222,41 @@ def op_shuffle_data(random_state, k_fold=True):
     """
 
     # data path
-    data_index = str(input('Dataset index (0~4): '))
-    pos_path = './data/train.csv'
-    neg_path = './data/balance/neg_train/neg_train-' + data_index + '.csv'
+    data_index = str(input("Dataset index (0~4): "))
+    pos_path = "./data/train.csv"
+    neg_path = "./data/balance/neg_train/neg_train-" + data_index + ".csv"
 
     if k_fold:
         # model path
-        model_path = './model/balance/kfold/neg_train-' + data_index + '.pt'
-        history_path = './history/balance/kfold/neg_train-' + data_index + '.pkl'
-        fig_path = './pics/balance/kfold/'
+        model_path = "./model/balance/kfold/neg_train-" + data_index + ".pt"
+        history_path = "./history/balance/kfold/neg_train-" + data_index + ".pkl"
+        fig_path = "./pics/balance/kfold/"
     else:
         # model path
-        model_path = './model/balance/final/neg_train-' + data_index + '.pt'
-        history_path = './history/balance/final/neg_train-' + data_index + '.pkl'
-        fig_path = './pics/balance/final/'
+        model_path = "./model/balance/final/neg_train-" + data_index + ".pt"
+        history_path = "./history/balance/final/neg_train-" + data_index + ".pkl"
+        fig_path = "./pics/balance/final/"
     print()
-    print('pos_path:', pos_path)
-    print('neg_path:', neg_path)
+    print("pos_path:", pos_path)
+    print("neg_path:", neg_path)
     print()
-    print('model_path:', model_path)
-    print('history_path:', history_path)
-    print('fig_path:', fig_path)
-    print('-' * 20)
+    print("model_path:", model_path)
+    print("history_path:", history_path)
+    print("fig_path:", fig_path)
+    print("-" * 20)
 
     # positive data
-    df_pos = pd.read_csv(pos_path, encoding='utf-8', dtype=str).fillna('')
-    df_pos = df_pos[['abstract']]
+    df_pos = pd.read_csv(pos_path, encoding="utf-8", dtype=str).fillna("")
+    df_pos = df_pos[["abstract"]]
     df_pos = df_pos.assign(label=1)
 
     # negative data
     try:
-        df_neg = pd.read_csv(neg_path, encoding='utf-8', dtype=str).fillna('')
+        df_neg = pd.read_csv(neg_path, encoding="utf-8", dtype=str).fillna("")
     except:
-        print('Error opening files! Please check path.')
+        print("Error opening files! Please check path.")
         quit()
-    df_neg = df_neg[['abstract']]
+    df_neg = df_neg[["abstract"]]
     df_neg = df_neg.assign(label=0)
 
     alldata = pd.concat([df_pos, df_neg], ignore_index=True)
@@ -252,8 +277,9 @@ def k_fold(X_train, y_train, k, random_state):
         cv_list_x(list): list of list of abstract
         cv_list_y(list): list of list of label
     """
-    skf = StratifiedKFold(n_splits=k, shuffle=True,
-                          random_state=random_state)  # init class
+    skf = StratifiedKFold(
+        n_splits=k, shuffle=True, random_state=random_state
+    )  # init class
 
     train_list_x = []
     train_list_y = []
@@ -279,10 +305,10 @@ def check_gpu():
     print()
     if torch.cuda.is_available():
         device = torch.device("cuda:0")
-        print('There are %d GPU(s) available.' % torch.cuda.device_count())
-        print('We will use the GPU:', torch.cuda.get_device_name(0))
+        print("There are %d GPU(s) available." % torch.cuda.device_count())
+        print("We will use the GPU:", torch.cuda.get_device_name(0))
     else:
-        print('No GPU available, using the CPU instead.')
+        print("No GPU available, using the CPU instead.")
         device = torch.device("cpu")
     print()
 
@@ -310,20 +336,20 @@ def tokenizing(train_list_x, train_list_y, k, tokenizer, train=True):
         # For every sentence...
         for sent in sent_list:
             encoded_dict = tokenizer.encode_plus(
-                sent,                      # Sentence to encode.
+                sent,  # Sentence to encode.
                 add_special_tokens=True,  # Add '[CLS]' and '[SEP]'
-                max_length=512,           # Pad & truncate all sentences.
-                padding='max_length',
-                return_attention_mask=True,   # Construct attn. masks.
-                return_tensors='pt',     # Return pytorch tensors.
-                truncation=True
+                max_length=512,  # Pad & truncate all sentences.
+                padding="max_length",
+                return_attention_mask=True,  # Construct attn. masks.
+                return_tensors="pt",  # Return pytorch tensors.
+                truncation=True,
             )
 
             # Add the encoded sentence to the list.
-            input_ids_list.append(encoded_dict['input_ids'])
+            input_ids_list.append(encoded_dict["input_ids"])
 
             # And its attention mask (simply differentiates padding from non-padding).
-            attention_masks_list.append(encoded_dict['attention_mask'])
+            attention_masks_list.append(encoded_dict["attention_mask"])
 
         # Convert the lists into tensors.
         input_ids_list = torch.cat(input_ids_list, dim=0)
@@ -331,13 +357,13 @@ def tokenizing(train_list_x, train_list_y, k, tokenizer, train=True):
         labels = torch.tensor(sent_label)
 
         if train:
-            input_ids_dict['train' + str(idx)] = input_ids_list
-            attention_masks_dict['train' + str(idx)] = attention_masks_list
-            labels_dict['train' + str(idx)] = labels
+            input_ids_dict["train" + str(idx)] = input_ids_list
+            attention_masks_dict["train" + str(idx)] = attention_masks_list
+            labels_dict["train" + str(idx)] = labels
         else:
-            input_ids_dict['cv' + str(idx)] = input_ids_list
-            attention_masks_dict['cv' + str(idx)] = attention_masks_list
-            labels_dict['cv' + str(idx)] = labels
+            input_ids_dict["cv" + str(idx)] = input_ids_list
+            attention_masks_dict["cv" + str(idx)] = attention_masks_list
+            labels_dict["cv" + str(idx)] = labels
 
     return input_ids_dict, attention_masks_dict, labels_dict
 
@@ -360,15 +386,15 @@ def calc_metric(training_history, data_index, train_metric=True, detail=False):
     for i in range(len(training_history)):
 
         if train_metric:
-            (TP, FP, TN, FN) = training_history[i]['train_metric'][-1]
-            auc = training_history[i]['train_auc'][-1]
-            loss = training_history[i]['train_loss'][-1]
-            path = './pics/balance/kfold/train-' + data_index + '.txt'
+            (TP, FP, TN, FN) = training_history[i]["train_metric"][-1]
+            auc = training_history[i]["train_auc"][-1]
+            loss = training_history[i]["train_loss"][-1]
+            path = "./pics/balance/kfold/train-" + data_index + ".txt"
         else:
-            (TP, FP, TN, FN) = training_history[i]['valid_metric'][-1]
-            auc = training_history[i]['valid_auc'][-1]
-            loss = training_history[i]['valid_loss'][-1]
-            path = './pics/balance/kfold/valid-' + data_index + '.txt'
+            (TP, FP, TN, FN) = training_history[i]["valid_metric"][-1]
+            auc = training_history[i]["valid_auc"][-1]
+            loss = training_history[i]["valid_loss"][-1]
+            path = "./pics/balance/kfold/valid-" + data_index + ".txt"
 
         acc = (TP + TN) / (TP + FP + TN + FN)
 
@@ -393,34 +419,34 @@ def calc_metric(training_history, data_index, train_metric=True, detail=False):
             npv = 0
 
         try:
-            f1 = (2 * recall * precision) / \
-                (recall + precision)  # F1-score則是兩者的調和平均數
+            f1 = (2 * recall * precision) / (recall + precision)  # F1-score則是兩者的調和平均數
         except:
             f1 = 0
 
         try:
-            mcc = (TP * TN - FP * FN) / \
-                np.sqrt(((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN)))
+            mcc = (TP * TN - FP * FN) / np.sqrt(
+                ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
+            )
         except:
             mcc = 0
 
         if detail:
-            print('[ fold', i, ']', '(Total sample: {})'.format(TP + FP + TN + FN))
-            print('TP:', TP)
-            print('FP:', FP)
-            print('TN:', TN)
-            print('FN:', FN)
+            print("[ fold", i, "]", "(Total sample: {})".format(TP + FP + TN + FN))
+            print("TP:", TP)
+            print("FP:", FP)
+            print("TN:", TN)
+            print("FN:", FN)
             print()
-            print('acc:', acc)
-            print('loss:', loss)
-            print('recall:', recall)
-            print('specificity:', specificity)
-            print('precision:', precision)
-            print('npv:', npv)
-            print('f1:', f1)
-            print('mcc:', mcc)
-            print('auc:', auc)
-            print('=' * 40)
+            print("acc:", acc)
+            print("loss:", loss)
+            print("recall:", recall)
+            print("specificity:", specificity)
+            print("precision:", precision)
+            print("npv:", npv)
+            print("f1:", f1)
+            print("mcc:", mcc)
+            print("auc:", auc)
+            print("=" * 40)
 
         ACC.append(acc)
         LOSS.append(loss)
@@ -433,38 +459,38 @@ def calc_metric(training_history, data_index, train_metric=True, detail=False):
         AUC.append(auc)
 
     if train_metric:
-        print('\n[Training average]\n')
+        print("\n[Training average]\n")
     else:
-        print('\n[valid average]\n')
-    print('ACC: {:.2}'.format((np.mean(ACC))))
-    print('LOSS: {:.2}'.format(np.mean(LOSS)))
+        print("\n[valid average]\n")
+    print("ACC: {:.2}".format((np.mean(ACC))))
+    print("LOSS: {:.2}".format(np.mean(LOSS)))
     print()
-    print('Recall: {:.2}'.format(np.mean(RECALL)))
-    print('Specificity: {:.2}'.format(np.mean(SPECIFICITY)))
-    print('Precision: {:.2}'.format(np.mean(PRECISION)))
-    print('NPV: {:.2}'.format(np.mean(NPV)))
+    print("Recall: {:.2}".format(np.mean(RECALL)))
+    print("Specificity: {:.2}".format(np.mean(SPECIFICITY)))
+    print("Precision: {:.2}".format(np.mean(PRECISION)))
+    print("NPV: {:.2}".format(np.mean(NPV)))
     print()
-    print('F1: {:.2}'.format(np.mean(F1)))
-    print('MCC: {:.2}'.format(np.mean(MCC)))
-    print('AUC: {:.2}'.format(np.mean(AUC)))
+    print("F1: {:.2}".format(np.mean(F1)))
+    print("MCC: {:.2}".format(np.mean(MCC)))
+    print("AUC: {:.2}".format(np.mean(AUC)))
     print()
 
     # save result
-    with open(path, 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile, delimiter='\t')
+    with open(path, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile, delimiter="\t")
         if train_metric:
-            writer.writerow(['[Train average]'])
+            writer.writerow(["[Train average]"])
         else:
-            writer.writerow(['[valid average]'])
-        writer.writerow(['ACC: {:.2}'.format((np.mean(ACC)))])
-        writer.writerow(['LOSS: {:.2}'.format(np.mean(LOSS))])
-        writer.writerow(['Recall: {:.2}'.format(np.mean(RECALL))])
-        writer.writerow(['Specificity: {:.2}'.format(np.mean(SPECIFICITY))])
-        writer.writerow(['Precision: {:.2}'.format(np.mean(PRECISION))])
-        writer.writerow(['NPV: {:.2}'.format(np.mean(NPV))])
-        writer.writerow(['F1: {:.2}'.format(np.mean(F1))])
-        writer.writerow(['MCC: {:.2}'.format(np.mean(MCC))])
-        writer.writerow(['AUC: {:.2}'.format(np.mean(AUC))])
+            writer.writerow(["[valid average]"])
+        writer.writerow(["ACC: {:.2}".format((np.mean(ACC)))])
+        writer.writerow(["LOSS: {:.2}".format(np.mean(LOSS))])
+        writer.writerow(["Recall: {:.2}".format(np.mean(RECALL))])
+        writer.writerow(["Specificity: {:.2}".format(np.mean(SPECIFICITY))])
+        writer.writerow(["Precision: {:.2}".format(np.mean(PRECISION))])
+        writer.writerow(["NPV: {:.2}".format(np.mean(NPV))])
+        writer.writerow(["F1: {:.2}".format(np.mean(F1))])
+        writer.writerow(["MCC: {:.2}".format(np.mean(MCC))])
+        writer.writerow(["AUC: {:.2}".format(np.mean(AUC))])
 
 
 def calc_avg(training_history):
@@ -476,15 +502,15 @@ def calc_avg(training_history):
 
     for i in range(len(training_history)):
         if i == 0:
-            a1 = np.array(training_history[0]['train_loss'].copy())
-            a2 = np.array(training_history[0]['valid_loss'].copy())
-            a3 = np.array(training_history[0]['train_acc'].copy())
-            a4 = np.array(training_history[0]['valid_acc'].copy())
+            a1 = np.array(training_history[0]["train_loss"].copy())
+            a2 = np.array(training_history[0]["valid_loss"].copy())
+            a3 = np.array(training_history[0]["train_acc"].copy())
+            a4 = np.array(training_history[0]["valid_acc"].copy())
             continue
-        a1 = a1 + np.array(training_history[i]['train_loss'])
-        a2 = a2 + np.array(training_history[i]['valid_loss'])
-        a3 = a3 + np.array(training_history[i]['train_acc'])
-        a4 = a4 + np.array(training_history[i]['valid_acc'])
+        a1 = a1 + np.array(training_history[i]["train_loss"])
+        a2 = a2 + np.array(training_history[i]["valid_loss"])
+        a3 = a3 + np.array(training_history[i]["train_acc"])
+        a4 = a4 + np.array(training_history[i]["valid_acc"])
 
     a1 /= len(training_history)
     a2 /= len(training_history)
@@ -504,51 +530,67 @@ def plot_lc(training_history, fig_path, data_index):
     a1, a2, a3, a4 = calc_avg(training_history)
 
     # color
-    tr_color = ['#2ff5f2', '#2ff5e8', '#2ff5c0', '#2fbdf5', '#2f99f5']
-    val_color = ['#f5952f', '#f5ac2f', '#f5c02f', '#f5d72f', '#f5ee2f']
+    tr_color = ["#2ff5f2", "#2ff5e8", "#2ff5c0", "#2fbdf5", "#2f99f5"]
+    val_color = ["#f5952f", "#f5ac2f", "#f5c02f", "#f5d72f", "#f5ee2f"]
 
     # loss
     for idx, color in enumerate(tr_color):  # train
         plt.plot(
-            training_history[idx]['train_loss'],
-            '--', alpha=0.4, label='train' + str(idx), color=color)
-    plt.plot(a1, label='average training')
+            training_history[idx]["train_loss"],
+            "--",
+            alpha=0.4,
+            label="train" + str(idx),
+            color=color,
+        )
+    plt.plot(a1, label="average training")
 
     for idx, color in enumerate(val_color):  # valid
         plt.plot(
-            training_history[idx]['valid_loss'],
-            '--', alpha=0.4, label='valid' + str(idx), color=color)
-    plt.plot(a2, label='average valid')
-    plt.ylabel('loss')
-    plt.xlabel('epochs')
+            training_history[idx]["valid_loss"],
+            "--",
+            alpha=0.4,
+            label="valid" + str(idx),
+            color=color,
+        )
+    plt.plot(a2, label="average valid")
+    plt.ylabel("loss")
+    plt.xlabel("epochs")
     axes = plt.gca()
     axes.set_ylim([0, 1])
     plt.legend()
-    plt.title('training / valid loss vs iterations')
+    plt.title("training / valid loss vs iterations")
     plt.grid()
-    plt.savefig(fig_path + 'set-' + data_index + '-loss' + '.png')
+    plt.savefig(fig_path + "set-" + data_index + "-loss" + ".png")
     plt.close()
 
     # acc
     for idx, color in enumerate(tr_color):  # train
         plt.plot(
-            training_history[idx]['train_acc'],
-            '--', alpha=0.4, label='train' + str(idx), color=color)
-    plt.plot(a3, label='average training')
+            training_history[idx]["train_acc"],
+            "--",
+            alpha=0.4,
+            label="train" + str(idx),
+            color=color,
+        )
+    plt.plot(a3, label="average training")
 
     for idx, color in enumerate(val_color):  # valid
         plt.plot(
-            training_history[idx]['valid_acc'],
-            '--', alpha=0.4, label='valid' + str(idx), color=color)
-    plt.plot(a4, label='average valid')
-    plt.ylabel('acc')
-    plt.xlabel('epochs')
+            training_history[idx]["valid_acc"],
+            "--",
+            alpha=0.4,
+            label="valid" + str(idx),
+            color=color,
+        )
+    plt.plot(a4, label="average valid")
+    plt.ylabel("acc")
+    plt.xlabel("epochs")
     axes = plt.gca()
     axes.set_ylim([0.5, 1])
     plt.legend()
-    plt.title('training / valid acc vs iterations')
+    plt.title("training / valid acc vs iterations")
     plt.grid()
-    plt.savefig(fig_path + 'set-' + data_index + '-acc' + '.png')
+    plt.savefig(fig_path + "set-" + data_index + "-acc" + ".png")
     plt.close()
 
 
@@ -564,20 +606,20 @@ def tokenizing_final(sent_list, sent_label, tokenizer):
     for sent in sent_list:
 
         encoded_dict = tokenizer.encode_plus(
-            sent,                      # Sentence to encode.
+            sent,  # Sentence to encode.
             add_special_tokens=True,  # Add '[CLS]' and '[SEP]'
-            max_length=512,           # Pad & truncate all sentences.
-            padding='max_length',
-            return_attention_mask=True,   # Construct attn. masks.
-            return_tensors='pt',     # Return pytorch tensors.
-            truncation=True
+            max_length=512,  # Pad & truncate all sentences.
+            padding="max_length",
+            return_attention_mask=True,  # Construct attn. masks.
+            return_tensors="pt",  # Return pytorch tensors.
+            truncation=True,
         )
 
         # Add the encoded sentence to the list.
-        input_ids.append(encoded_dict['input_ids'])
+        input_ids.append(encoded_dict["input_ids"])
 
         # And its attention mask (simply differentiates padding from non-padding).
-        attention_masks.append(encoded_dict['attention_mask'])
+        attention_masks.append(encoded_dict["attention_mask"])
 
     # Convert the lists into tensors.
     input_ids = torch.cat(input_ids, dim=0)
@@ -587,13 +629,21 @@ def tokenizing_final(sent_list, sent_label, tokenizer):
     return input_ids, attention_masks, labels
 
 
-def train_model_final(model, train_dataloader, optimizer, N_train, device, scheduler, epochs=4):
+def train_model_final(
+    model, train_dataloader, optimizer, N_train, device, scheduler, epochs=4
+):
     """
     Training the final model.
     """
     useful_stuff = {
-        'training_loss': [], 'training_acc': [], 'training_metric': [], 'training_auc': [],
-        'train_loss': [], 'train_acc': [], 'train_metric': [], 'train_auc': [],
+        "training_loss": [],
+        "training_acc": [],
+        "training_metric": [],
+        "training_auc": [],
+        "train_loss": [],
+        "train_acc": [],
+        "train_metric": [],
+        "train_auc": [],
     }
 
     for epoch in range(epochs):
@@ -613,8 +663,7 @@ def train_model_final(model, train_dataloader, optimizer, N_train, device, sched
             b_labels = batch[2].to(device)
             model.zero_grad()
 
-            output = model(
-                b_input_ids, attention_mask=b_input_mask, labels=b_labels)
+            output = model(b_input_ids, attention_mask=b_input_mask, labels=b_labels)
             loss = output[0]
             logits = output[1]
             loss.backward()
@@ -641,16 +690,14 @@ def train_model_final(model, train_dataloader, optimizer, N_train, device, sched
 
         fpr, tpr, _ = metrics.roc_curve(auc_y, auc_yhat)
         auc = metrics.auc(fpr, tpr)
-        useful_stuff['training_loss'].append(
-            training_loss / len(train_dataloader))
-        useful_stuff['training_acc'].append(correct / N_train)
-        useful_stuff['training_metric'].append((TP, FP, TN, FN))
-        useful_stuff['training_auc'].append(auc)
+        useful_stuff["training_loss"].append(training_loss / len(train_dataloader))
+        useful_stuff["training_acc"].append(correct / N_train)
+        useful_stuff["training_metric"].append((TP, FP, TN, FN))
+        useful_stuff["training_auc"].append(auc)
 
-        print("training loss: {0:.2f}".format(
-            training_loss / len(train_dataloader)))
+        print("training loss: {0:.2f}".format(training_loss / len(train_dataloader)))
         print("training acc: {0:.2f}".format(correct / N_train))
-        print('-' * 10)
+        print("-" * 10)
 
         # train========================================
         model.eval()
@@ -669,7 +716,8 @@ def train_model_final(model, train_dataloader, optimizer, N_train, device, sched
                 b_labels = batch[2].to(device)
 
                 output = model(
-                    b_input_ids, attention_mask=b_input_mask, labels=b_labels)
+                    b_input_ids, attention_mask=b_input_mask, labels=b_labels
+                )
                 loss = output[0]
                 logits = output[1]
                 _, yhat = torch.max(logits.data, 1)
@@ -688,27 +736,25 @@ def train_model_final(model, train_dataloader, optimizer, N_train, device, sched
 
             fpr, tpr, _ = metrics.roc_curve(auc_y, auc_yhat)
             auc = metrics.auc(fpr, tpr)
-            useful_stuff['train_loss'].append(
-                training_loss / len(train_dataloader))
-            useful_stuff['train_acc'].append(correct / N_train)
-            useful_stuff['train_metric'].append((TP, FP, TN, FN))
-            useful_stuff['train_auc'].append(auc)
+            useful_stuff["train_loss"].append(training_loss / len(train_dataloader))
+            useful_stuff["train_acc"].append(correct / N_train)
+            useful_stuff["train_metric"].append((TP, FP, TN, FN))
+            useful_stuff["train_auc"].append(auc)
 
-            print("train loss: {0:.2f}".format(
-                training_loss / len(train_dataloader)))
+            print("train loss: {0:.2f}".format(training_loss / len(train_dataloader)))
             print("train acc: {0:.2f}".format(correct / N_train))
             print()
-        print('=' * 20)
-    print('*' * 40)
+        print("=" * 20)
+    print("*" * 40)
     return useful_stuff
 
 
 def calc_metric_final(useful_stuff, fig_path, data_index):
-    path = fig_path + 'final-' + data_index + '.txt'
-    (TP, FP, TN, FN) = useful_stuff['train_metric'][-1]
+    path = fig_path + "final-" + data_index + ".txt"
+    (TP, FP, TN, FN) = useful_stuff["train_metric"][-1]
 
     acc = (TP + TN) / (TP + FP + TN + FN)
-    loss = useful_stuff['train_loss'][-1]
+    loss = useful_stuff["train_loss"][-1]
 
     recall = TP / (TP + FN)  # 召回率是在所有正樣本當中，能夠預測多少正樣本的比例
     specificity = TN / (TN + FP)  # 特異度是在所有負樣本當中，能夠預測多少負樣本的比例
@@ -716,67 +762,66 @@ def calc_metric_final(useful_stuff, fig_path, data_index):
     npv = TN / (TN + FN)  # npv為在所有預測為正樣本中，有多少為正樣本
 
     f1 = (2 * recall * precision) / (recall + precision)  # F1-score則是兩者的調和平均數
-    mcc = (TP * TN - FP * FN) / \
-        np.sqrt(((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN)))
-    auc = useful_stuff['train_auc'][-1]
+    mcc = (TP * TN - FP * FN) / np.sqrt(((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN)))
+    auc = useful_stuff["train_auc"][-1]
 
-    print('\n[Training]\n')
-    print('total sample:', (TP + FP + TN + FN))
-    print('TP: {:.2f}'.format(TP))
-    print('FP: {:.2f}'.format(FP))
-    print('TN: {:.2f}'.format(TN))
-    print('FN: {:.2f}'.format(FN))
+    print("\n[Training]\n")
+    print("total sample:", (TP + FP + TN + FN))
+    print("TP: {:.2f}".format(TP))
+    print("FP: {:.2f}".format(FP))
+    print("TN: {:.2f}".format(TN))
+    print("FN: {:.2f}".format(FN))
     print()
-    print('acc: {:.2f}'.format(acc))
-    print('loss: {:.2f}'.format(loss))
+    print("acc: {:.2f}".format(acc))
+    print("loss: {:.2f}".format(loss))
     print()
-    print('recall: {:.2f}'.format(recall))
-    print('specificity: {:.2f}'.format(specificity))
-    print('precision: {:.2f}'.format(precision))
-    print('npv: {:.2f}'.format(npv))
+    print("recall: {:.2f}".format(recall))
+    print("specificity: {:.2f}".format(specificity))
+    print("precision: {:.2f}".format(precision))
+    print("npv: {:.2f}".format(npv))
     print()
-    print('f1: {:.2f}'.format(f1))
-    print('mcc: {:.2f}'.format(mcc))
-    print('auc: {:.2f}'.format(auc))
+    print("f1: {:.2f}".format(f1))
+    print("mcc: {:.2f}".format(mcc))
+    print("auc: {:.2f}".format(auc))
 
     # save result
-    with open(path, 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile, delimiter='\t')
-        writer.writerow(['[Training average]'])
-        writer.writerow(['ACC: {:.2}'.format(acc)])
-        writer.writerow(['LOSS: {:.2}'.format(loss)])
-        writer.writerow(['Recall: {:.2}'.format(recall)])
-        writer.writerow(['Specificity: {:.2}'.format(specificity)])
-        writer.writerow(['Precision: {:.2}'.format(precision)])
-        writer.writerow(['NPV: {:.2}'.format(npv)])
-        writer.writerow(['F1: {:.2}'.format(f1)])
-        writer.writerow(['MCC: {:.2}'.format(mcc)])
-        writer.writerow(['AUC: {:.2}'.format(auc)])
+    with open(path, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile, delimiter="\t")
+        writer.writerow(["[Training average]"])
+        writer.writerow(["ACC: {:.2}".format(acc)])
+        writer.writerow(["LOSS: {:.2}".format(loss)])
+        writer.writerow(["Recall: {:.2}".format(recall)])
+        writer.writerow(["Specificity: {:.2}".format(specificity)])
+        writer.writerow(["Precision: {:.2}".format(precision)])
+        writer.writerow(["NPV: {:.2}".format(npv)])
+        writer.writerow(["F1: {:.2}".format(f1)])
+        writer.writerow(["MCC: {:.2}".format(mcc)])
+        writer.writerow(["AUC: {:.2}".format(auc)])
 
 
 def plot_lc_final(useful_stuff, fig_path, data_index):
     # acc
-    plt.plot(useful_stuff['train_acc'], label='train')
-    plt.xlabel('epochs')
-    plt.ylabel('acc')
-    plt.title('train acc vs epochs')
+    plt.plot(useful_stuff["train_acc"], label="train")
+    plt.xlabel("epochs")
+    plt.ylabel("acc")
+    plt.title("train acc vs epochs")
     plt.grid()
     plt.legend()
     axes = plt.gca()
     axes.set_ylim([0.5, 1])
-    plt.savefig(fig_path + 'set-' + data_index + '-acc' + '.png')
+    plt.savefig(fig_path + "set-" + data_index + "-acc" + ".png")
     plt.close()
 
     # loss
-    plt.plot(useful_stuff['train_loss'], label='train')
-    plt.xlabel('epochs')
-    plt.ylabel('loss')
-    plt.title('train loss vs epochs')
+    plt.plot(useful_stuff["train_loss"], label="train")
+    plt.xlabel("epochs")
+    plt.ylabel("loss")
+    plt.title("train loss vs epochs")
     plt.grid()
     plt.legend()
     axes = plt.gca()
     axes.set_ylim([0, 1])
-    plt.savefig(fig_path + 'set-' + data_index + '-loss' + '.png')
+    plt.savefig(fig_path + "set-" + data_index + "-loss" + ".png")
     plt.close()
 
 
@@ -786,25 +831,25 @@ def op_shuffle_data_eval(random_state):
     This function only open neg_train-5 (for prediction).
     """
     # set path
-    model_index = str(input('Input model_index(0~4): '))
-    model_path = './model/balance/final/neg_train-' + model_index + '.pt'
-    pickle_path = './pickles/balance/model-' + model_index
-    pos_path = './data/train.csv'
-    neg_path = './data/balance/neg_train/neg_train-5.csv'
+    model_index = str(input("Input model_index(0~4): "))
+    model_path = "./model/balance/final/neg_train-" + model_index + ".pt"
+    pickle_path = "./pickles/balance/model-" + model_index
+    pos_path = "./data/train.csv"
+    neg_path = "./data/balance/neg_train/neg_train-5.csv"
 
-    print('\nmodel_path:', model_path)
-    print('pos_model_path:', pos_path)
-    print('neg_path:', neg_path)
+    print("\nmodel_path:", model_path)
+    print("pos_model_path:", pos_path)
+    print("neg_path:", neg_path)
     print()
 
     # positive
-    df_pos = pd.read_csv(pos_path, encoding='utf-8', dtype=str).fillna('')
-    df_pos = df_pos[['abstract']]
+    df_pos = pd.read_csv(pos_path, encoding="utf-8", dtype=str).fillna("")
+    df_pos = df_pos[["abstract"]]
     df_pos = df_pos.assign(label=1)
 
     # negative
-    df_neg = pd.read_csv(neg_path, encoding='utf-8', dtype=str).fillna('')
-    df_neg = df_neg[['abstract']]
+    df_neg = pd.read_csv(neg_path, encoding="utf-8", dtype=str).fillna("")
+    df_neg = df_neg[["abstract"]]
     df_neg = df_neg.assign(label=0)
 
     # combine pos + neg
@@ -825,8 +870,9 @@ def k_fold_tensor(X_train, y_train, k, random_state):
         cv_list_x(list): list of list of abstract
         cv_list_y(list): list of list of label
     """
-    skf = StratifiedKFold(n_splits=k, shuffle=True,
-                          random_state=random_state)  # init class
+    skf = StratifiedKFold(
+        n_splits=k, shuffle=True, random_state=random_state
+    )  # init class
 
     train_list_x = []
     train_list_y = []
@@ -845,12 +891,32 @@ def k_fold_tensor(X_train, y_train, k, random_state):
     return train_list_x, train_list_y, cv_list_x, cv_list_y
 
 
-def train_ensemble(model, train_dataloader, validation_dataloader, optimizer, N_train, N_test, device, criterion, scheduler,  epochs=20):
+def train_ensemble(
+    model,
+    train_dataloader,
+    validation_dataloader,
+    optimizer,
+    N_train,
+    N_test,
+    device,
+    criterion,
+    scheduler,
+    epochs=20,
+):
 
     useful_stuff = {
-        'training_loss': [], 'training_acc': [], 'training_auc': [], 'training_metric': [],
-        'train_loss': [], 'train_acc': [], 'train_auc': [], 'train_metric': [],
-        'valid_loss': [], 'valid_acc': [], 'valid_auc': [], 'valid_metric': [],
+        "training_loss": [],
+        "training_acc": [],
+        "training_auc": [],
+        "training_metric": [],
+        "train_loss": [],
+        "train_acc": [],
+        "train_auc": [],
+        "train_metric": [],
+        "valid_loss": [],
+        "valid_acc": [],
+        "valid_auc": [],
+        "valid_metric": [],
     }
 
     for epoch in range(epochs):
@@ -887,10 +953,10 @@ def train_ensemble(model, train_dataloader, validation_dataloader, optimizer, N_
         acc_ = correct / N_train
         loss_ = np.mean(training_loss)
 
-        useful_stuff['training_loss'].append(loss_)
-        useful_stuff['training_acc'].append(acc_)
-        useful_stuff['training_metric'].append((TP, FP, TN, FN))
-        useful_stuff['training_auc'].append(auc)
+        useful_stuff["training_loss"].append(loss_)
+        useful_stuff["training_acc"].append(acc_)
+        useful_stuff["training_metric"].append((TP, FP, TN, FN))
+        useful_stuff["training_auc"].append(auc)
 
         # print("training loss: {0:.2f}".format(loss_))
         # print("training acc: {0:.2f}".format(acc_))
@@ -929,10 +995,10 @@ def train_ensemble(model, train_dataloader, validation_dataloader, optimizer, N_
             loss_ = np.mean(training_loss)
             acc_ = correct / N_train
 
-            useful_stuff['train_loss'].append(loss_)
-            useful_stuff['train_acc'].append(acc_)
-            useful_stuff['train_metric'].append((TP, FP, TN, FN))
-            useful_stuff['train_auc'].append(auc)
+            useful_stuff["train_loss"].append(loss_)
+            useful_stuff["train_acc"].append(acc_)
+            useful_stuff["train_metric"].append((TP, FP, TN, FN))
+            useful_stuff["train_auc"].append(auc)
 
             # print("train loss: {0:.2f}".format(loss_))
             # print("train acc: {0:.2f}".format(acc_))
@@ -969,10 +1035,10 @@ def train_ensemble(model, train_dataloader, validation_dataloader, optimizer, N_
             loss_ = np.mean(training_loss)
             acc_ = correct / N_test
 
-            useful_stuff['valid_loss'].append(loss_)
-            useful_stuff['valid_acc'].append(acc_)
-            useful_stuff['valid_metric'].append((TP, FP, TN, FN))
-            useful_stuff['valid_auc'].append(auc)
+            useful_stuff["valid_loss"].append(loss_)
+            useful_stuff["valid_acc"].append(acc_)
+            useful_stuff["valid_metric"].append((TP, FP, TN, FN))
+            useful_stuff["valid_auc"].append(auc)
 
             # print("valid loss: {0:.2f}".format(loss_))
             # print("valid acc: {0:.2f}".format(acc_))
@@ -1002,15 +1068,15 @@ def calc_metric_ensemble(training_history, fig_path, train_metric=True, detail=F
     for i in range(len(training_history)):
 
         if train_metric:
-            (TP, FP, TN, FN) = training_history[i]['train_metric'][-1]
-            auc = training_history[i]['train_auc'][-1]
-            loss = training_history[i]['train_loss'][-1]
-            path = fig_path + 'train.txt'
+            (TP, FP, TN, FN) = training_history[i]["train_metric"][-1]
+            auc = training_history[i]["train_auc"][-1]
+            loss = training_history[i]["train_loss"][-1]
+            path = fig_path + "train.txt"
         else:
-            (TP, FP, TN, FN) = training_history[i]['valid_metric'][-1]
-            auc = training_history[i]['valid_auc'][-1]
-            loss = training_history[i]['valid_loss'][-1]
-            path = fig_path + 'valid.txt'
+            (TP, FP, TN, FN) = training_history[i]["valid_metric"][-1]
+            auc = training_history[i]["valid_auc"][-1]
+            loss = training_history[i]["valid_loss"][-1]
+            path = fig_path + "valid.txt"
 
         acc = (TP + TN) / (TP + FP + TN + FN)
 
@@ -1035,34 +1101,34 @@ def calc_metric_ensemble(training_history, fig_path, train_metric=True, detail=F
             npv = 0
 
         try:
-            f1 = (2 * recall * precision) / \
-                (recall + precision)  # F1-score則是兩者的調和平均數
+            f1 = (2 * recall * precision) / (recall + precision)  # F1-score則是兩者的調和平均數
         except:
             f1 = 0
 
         try:
-            mcc = (TP * TN - FP * FN) / \
-                np.sqrt(((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN)))
+            mcc = (TP * TN - FP * FN) / np.sqrt(
+                ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
+            )
         except:
             mcc = 0
 
         if detail:
-            print('[ fold', i, ']', '(Total sample: {})'.format(TP + FP + TN + FN))
-            print('TP:', TP)
-            print('FP:', FP)
-            print('TN:', TN)
-            print('FN:', FN)
+            print("[ fold", i, "]", "(Total sample: {})".format(TP + FP + TN + FN))
+            print("TP:", TP)
+            print("FP:", FP)
+            print("TN:", TN)
+            print("FN:", FN)
             print()
-            print('acc:', acc)
-            print('loss:', loss)
-            print('recall:', recall)
-            print('specificity:', specificity)
-            print('precision:', precision)
-            print('npv:', npv)
-            print('f1:', f1)
-            print('mcc:', mcc)
-            print('auc:', auc)
-            print('=' * 40)
+            print("acc:", acc)
+            print("loss:", loss)
+            print("recall:", recall)
+            print("specificity:", specificity)
+            print("precision:", precision)
+            print("npv:", npv)
+            print("f1:", f1)
+            print("mcc:", mcc)
+            print("auc:", auc)
+            print("=" * 40)
 
         ACC.append(acc)
         LOSS.append(loss)
@@ -1075,38 +1141,38 @@ def calc_metric_ensemble(training_history, fig_path, train_metric=True, detail=F
         AUC.append(auc)
 
     if train_metric:
-        print('\n[Training average]\n')
+        print("\n[Training average]\n")
     else:
-        print('\n[valid average]\n')
-    print('ACC: {:.2}'.format((np.mean(ACC))))
-    print('LOSS: {:.2}'.format(np.mean(LOSS)))
+        print("\n[valid average]\n")
+    print("ACC: {:.2}".format((np.mean(ACC))))
+    print("LOSS: {:.2}".format(np.mean(LOSS)))
     print()
-    print('Recall: {:.2}'.format(np.mean(RECALL)))
-    print('Specificity: {:.2}'.format(np.mean(SPECIFICITY)))
-    print('Precision: {:.2}'.format(np.mean(PRECISION)))
-    print('NPV: {:.2}'.format(np.mean(NPV)))
+    print("Recall: {:.2}".format(np.mean(RECALL)))
+    print("Specificity: {:.2}".format(np.mean(SPECIFICITY)))
+    print("Precision: {:.2}".format(np.mean(PRECISION)))
+    print("NPV: {:.2}".format(np.mean(NPV)))
     print()
-    print('F1: {:.2}'.format(np.mean(F1)))
-    print('MCC: {:.2}'.format(np.mean(MCC)))
-    print('AUC: {:.2}'.format(np.mean(AUC)))
+    print("F1: {:.2}".format(np.mean(F1)))
+    print("MCC: {:.2}".format(np.mean(MCC)))
+    print("AUC: {:.2}".format(np.mean(AUC)))
     print()
 
     # save result
-    with open(path, 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile, delimiter='\t')
+    with open(path, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile, delimiter="\t")
         if train_metric:
-            writer.writerow(['[Train average]'])
+            writer.writerow(["[Train average]"])
         else:
-            writer.writerow(['[valid average]'])
-        writer.writerow(['ACC: {:.2}'.format((np.mean(ACC)))])
-        writer.writerow(['LOSS: {:.2}'.format(np.mean(LOSS))])
-        writer.writerow(['Recall: {:.2}'.format(np.mean(RECALL))])
-        writer.writerow(['Specificity: {:.2}'.format(np.mean(SPECIFICITY))])
-        writer.writerow(['Precision: {:.2}'.format(np.mean(PRECISION))])
-        writer.writerow(['NPV: {:.2}'.format(np.mean(NPV))])
-        writer.writerow(['F1: {:.2}'.format(np.mean(F1))])
-        writer.writerow(['MCC: {:.2}'.format(np.mean(MCC))])
-        writer.writerow(['AUC: {:.2}'.format(np.mean(AUC))])
+            writer.writerow(["[valid average]"])
+        writer.writerow(["ACC: {:.2}".format((np.mean(ACC)))])
+        writer.writerow(["LOSS: {:.2}".format(np.mean(LOSS))])
+        writer.writerow(["Recall: {:.2}".format(np.mean(RECALL))])
+        writer.writerow(["Specificity: {:.2}".format(np.mean(SPECIFICITY))])
+        writer.writerow(["Precision: {:.2}".format(np.mean(PRECISION))])
+        writer.writerow(["NPV: {:.2}".format(np.mean(NPV))])
+        writer.writerow(["F1: {:.2}".format(np.mean(F1))])
+        writer.writerow(["MCC: {:.2}".format(np.mean(MCC))])
+        writer.writerow(["AUC: {:.2}".format(np.mean(AUC))])
 
 
 def plot_lc_ensemble(training_history, fig_path):
@@ -1114,55 +1180,118 @@ def plot_lc_ensemble(training_history, fig_path):
     a1, a2, a3, a4 = calc_avg(training_history)
 
     # color
-    tr_color = ['#2ff5f2', '#2ff5e8', '#2ff5c0', '#2fbdf5', '#2f99f5']
-    val_color = ['#f5952f', '#f5ac2f', '#f5c02f', '#f5d72f', '#f5ee2f']
+    tr_color = ["#2ff5f2", "#2ff5e8", "#2ff5c0", "#2fbdf5", "#2f99f5"]
+    val_color = ["#f5952f", "#f5ac2f", "#f5c02f", "#f5d72f", "#f5ee2f"]
 
     # train loss
     for idx, color in enumerate(tr_color):
         plt.plot(
-            training_history[idx]['train_loss'],
-            '--', alpha=0.4, label='train' + str(idx), color=color)
-    plt.plot(a1, label='average training')
+            training_history[idx]["train_loss"],
+            "--",
+            alpha=0.4,
+            label="train" + str(idx),
+            color=color,
+        )
+    plt.plot(a1, label="average training")
 
     # valid loss
     for idx, color in enumerate(val_color):
         plt.plot(
-            training_history[idx]['valid_loss'],
-            '--', alpha=0.4, label='valid' + str(idx), color=color)
+            training_history[idx]["valid_loss"],
+            "--",
+            alpha=0.4,
+            label="valid" + str(idx),
+            color=color,
+        )
 
-    plt.plot(a2, label='average valid')
-    plt.ylabel('loss')
-    plt.xlabel('epochs')
+    plt.plot(a2, label="average valid")
+    plt.ylabel("loss")
+    plt.xlabel("epochs")
     axes = plt.gca()
     axes.set_ylim([0, 1])
     plt.legend()
-    plt.title('training / valid loss vs iterations')
+    plt.title("training / valid loss vs iterations")
     plt.grid()
-    plt.savefig(fig_path + 'loss' + '.png')
+    plt.savefig(fig_path + "loss" + ".png")
     plt.close()
 
     # train acc
     for idx, color in enumerate(tr_color):
         plt.plot(
-            training_history[idx]['train_acc'],
-            '--', alpha=0.4, label='train' + str(idx), color=color)
-    plt.plot(a3, label='average training')
+            training_history[idx]["train_acc"],
+            "--",
+            alpha=0.4,
+            label="train" + str(idx),
+            color=color,
+        )
+    plt.plot(a3, label="average training")
 
     # valid acc
     for idx, color in enumerate(val_color):
         plt.plot(
-            training_history[idx]['valid_acc'],
-            '--', alpha=0.4, label='valid' + str(idx), color=color)
-    plt.plot(a4, label='average valid')
-    plt.ylabel('acc')
-    plt.xlabel('epochs')
+            training_history[idx]["valid_acc"],
+            "--",
+            alpha=0.4,
+            label="valid" + str(idx),
+            color=color,
+        )
+    plt.plot(a4, label="average valid")
+    plt.ylabel("acc")
+    plt.xlabel("epochs")
     axes = plt.gca()
-    axes.set_ylim([0.4, 1])
+    axes.set_ylim([0.5, 1])
     plt.legend()
-    plt.title('training / valid acc vs iterations')
+    plt.title("training / valid acc vs iterations")
     plt.grid()
-    plt.savefig(fig_path + 'acc' + '.png')
+    plt.savefig(fig_path + "acc" + ".png")
     plt.close()
+
+
+def op_data_ensemble():
+    """
+    Open data and return as tensor.
+    Args:
+        input: None
+
+        output: X(tensor): Features with shape (len, 5)
+                y(tesnor): Leabel with shape (len)
+    """
+    # set path
+    pathx_1 = "./pickles/balance/model-0-X.pkl"
+    pathx_2 = "./pickles/balance/model-1-X.pkl"
+    pathx_3 = "./pickles/balance/model-2-X.pkl"
+    pathx_4 = "./pickles/balance/model-3-X.pkl"
+    pathx_5 = "./pickles/balance/model-4-X.pkl"
+    pathy = "./pickles/balance/model-0-y.pkl"  # all the same
+    fig_path = "./pics/balance/ensemble/"
+    model_path = "./model/balance/ensemble/"
+    history_path = "./history/balance/ensemble/ensemble.pkl"
+
+    print("fig_path:", fig_path)
+    print("model_path:", model_path)
+    print("history_path:", history_path)
+    print()
+
+    # load feture
+    path_list = [pathx_1, pathx_2, pathx_3, pathx_4, pathx_5]
+    X_list = []
+    for path in path_list:
+        with open(path, "rb") as f:
+            print("load path:", path)
+            X_list.append(torch.tensor(pickle.load(f)).reshape(-1, 1))
+
+    # load target
+    with open(pathy, "rb") as f:
+        print("load path:", pathy)
+        y_list = pickle.load(f)
+
+    # stacking 5 features (1280, 1) -> (1280, 5)
+    X = torch.cat((X_list[0], X_list[1], X_list[2], X_list[3], X_list[4]), 1)
+
+    # label
+    y = torch.tensor(y_list)
+
+    return X, y, fig_path, model_path, history_path
 
 
 class Data(Dataset):
