@@ -1,4 +1,5 @@
 """
+Trains sub-model.
 K-fold cross validation.
 """
 # load basic library
@@ -74,7 +75,7 @@ for idx in range(k):
     )
 
 # hypterparameter
-epochs = 2
+epochs = 5
 batch_size = 4
 print("epochs:", epochs)
 print("batch_size:", batch_size)
@@ -138,11 +139,12 @@ calc_metric(training_hist, data_index, train_metric=True, detail=False)
 calc_metric(training_hist, data_index, train_metric=False, detail=False)
 
 # save model
-torch.save(model.state_dict(), model_path)
+# torch.save(model.state_dict(), model_path)
 
 # save trainin_history
-with open(history_path, "wb") as f:
-    pickle.dump(training_hist, f)
+# with open(history_path, "wb") as f:
+#     pickle.dump(training_hist, f)
 
 # plot learning curve
-plot_lc(training_hist, fig_path, data_index)
+# plot_lc(training_hist, fig_path, data_index)
+plot_lc(training_hist, "./", data_index)

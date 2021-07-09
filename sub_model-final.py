@@ -31,12 +31,12 @@ torch.manual_seed(seed_val)
 device = check_gpu()
 
 # open data =====
-k = 5  # k-fold
+k = 5  # k-fold cross validation
 alldata, model_path, history_path, fig_path, data_index = op_shuffle_data(
-    seed_val, k_fold=False
+    seed_val, final_model=True
 )
 
-# k-fold
+# feature and target
 sent_list = alldata["abstract"].to_list()
 sent_label = alldata["label"].to_list()
 
@@ -87,7 +87,7 @@ scheduler = get_linear_schedule_with_warmup(
     optimizer, num_warmup_steps=total_steps * 0.1, num_training_steps=total_steps
 )
 
-# train model
+# train the model
 useful_stuff = train_model_final(
     model=model,
     train_dataloader=train_dataloader,

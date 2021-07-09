@@ -1,3 +1,6 @@
 *.pickle
 *.pkl
 *.pt
+.vscode/
+*__pycache__/
+*.ipynb_checkpoints/

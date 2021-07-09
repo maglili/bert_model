@@ -1,5 +1,6 @@
 # loadbasic library
 import pickle
+import random
 import csv
 import pandas as pd
 import numpy as np
@@ -12,8 +13,15 @@ plt.rcParams["figure.figsize"] = (12, 8)
 
 # load torch library
 from torch.utils.data import Dataset, DataLoader, TensorDataset
+import torch.nn.functional as F
 import torch.nn as nn
 import torch
+
+# keep reandom seed
+seed_val = 0
+random.seed(seed_val)
+np.random.seed(seed_val)
+torch.manual_seed(seed_val)
 
 
 def train_model(
@@ -215,10 +223,13 @@ def train_model(
     return useful_stuff
 
 
-def op_shuffle_data(random_state, k_fold=True):
+def op_shuffle_data(random_state, final_model=False):
     """
     Combine positive and negative data,
     return it as a DadaFrame.
+    Args:
+        random_state (int): set shuffle random seed
+        final_model (bool): whether training the final model
     """
 
     # data path
@@ -226,20 +237,18 @@ def op_shuffle_data(random_state, k_fold=True):
     pos_path = "./data/train.csv"
     neg_path = "./data/balance/neg_train/neg_train-" + data_index + ".csv"
 
-    if k_fold:
-        # model path
+    # set path
+    if not final_model:
         model_path = "./model/balance/kfold/neg_train-" + data_index + ".pt"
         history_path = "./history/balance/kfold/neg_train-" + data_index + ".pkl"
         fig_path = "./pics/balance/kfold/"
     else:
-        # model path
         model_path = "./model/balance/final/neg_train-" + data_index + ".pt"
         history_path = "./history/balance/final/neg_train-" + data_index + ".pkl"
         fig_path = "./pics/balance/final/"
-    print()
+
     print("pos_path:", pos_path)
     print("neg_path:", neg_path)
-    print()
     print("model_path:", model_path)
     print("history_path:", history_path)
     print("fig_path:", fig_path)
@@ -750,6 +759,13 @@ def train_model_final(
 
 
 def calc_metric_final(useful_stuff, fig_path, data_index):
+    """
+    calculate metrics.
+    args:
+        useful_stuff(dict): infomation dict, obtaining acc, loss, auc, ...
+        fig_path(str): path to store figures
+        data_index(int): what dataset is
+    """
     path = fig_path + "final-" + data_index + ".txt"
     (TP, FP, TN, FN) = useful_stuff["train_metric"][-1]
 
@@ -771,15 +787,12 @@ def calc_metric_final(useful_stuff, fig_path, data_index):
     print("FP: {:.2f}".format(FP))
     print("TN: {:.2f}".format(TN))
     print("FN: {:.2f}".format(FN))
-    print()
     print("acc: {:.2f}".format(acc))
     print("loss: {:.2f}".format(loss))
-    print()
     print("recall: {:.2f}".format(recall))
     print("specificity: {:.2f}".format(specificity))
     print("precision: {:.2f}".format(precision))
     print("npv: {:.2f}".format(npv))
-    print()
     print("f1: {:.2f}".format(f1))
     print("mcc: {:.2f}".format(mcc))
     print("auc: {:.2f}".format(auc))
@@ -800,6 +813,13 @@ def calc_metric_final(useful_stuff, fig_path, data_index):
 
 
 def plot_lc_final(useful_stuff, fig_path, data_index):
+    """
+    plot learning curve.
+    args:
+        useful_stuff(dict): infomation dict, obtaining acc, loss, auc, ...
+        fig_path(str): path to store figures
+        data_index(int): what dataset is
+    """
     # acc
     plt.plot(useful_stuff["train_acc"], label="train")
     plt.xlabel("epochs")
@@ -809,7 +829,8 @@ def plot_lc_final(useful_stuff, fig_path, data_index):
     plt.legend()
     axes = plt.gca()
     axes.set_ylim([0.5, 1])
-    plt.savefig(fig_path + "set-" + data_index + "-acc" + ".png")
+    fname = fig_path + "set-" + data_index + "-acc" + ".png"
+    plt.savefig(fname, bbox_inches="tight")
     plt.close()
 
     # loss
@@ -821,27 +842,15 @@ def plot_lc_final(useful_stuff, fig_path, data_index):
     plt.legend()
     axes = plt.gca()
     axes.set_ylim([0, 1])
-    plt.savefig(fig_path + "set-" + data_index + "-loss" + ".png")
+    fname = fig_path + "set-" + data_index + "-loss" + ".png"
+    plt.savefig(fname, bbox_inches="tight")
     plt.close()
 
 
-def op_shuffle_data_eval(random_state):
+def read_data(pos_path, neg_path):
     """
-    Open data and return a DataFrame.
-    This function only open neg_train-5 (for prediction).
+    Open csv files as DataFrame
     """
-    # set path
-    model_index = str(input("Input model_index(0~4): "))
-    model_path = "./model/balance/final/neg_train-" + model_index + ".pt"
-    pickle_path = "./pickles/balance/model-" + model_index
-    pos_path = "./data/train.csv"
-    neg_path = "./data/balance/neg_train/neg_train-5.csv"
-
-    print("\nmodel_path:", model_path)
-    print("pos_model_path:", pos_path)
-    print("neg_path:", neg_path)
-    print()
-
     # positive
     df_pos = pd.read_csv(pos_path, encoding="utf-8", dtype=str).fillna("")
     df_pos = df_pos[["abstract"]]
@@ -854,13 +863,66 @@ def op_shuffle_data_eval(random_state):
 
     # combine pos + neg
     alldata = pd.concat([df_pos, df_neg], ignore_index=True)
+
+    return alldata
+
+
+def op_shuffle_data_eval(random_state):
+    """
+    Open data and return it as a DataFrame.
+    This function only open neg_train-5 (for prediction).
+    args:
+        random_state(int): set random seed for shuffle
+    """
+    # set path
+    model_index = str(input("Input model_index(0~4): "))
+    model_path = "./model/balance/final/neg_train-" + model_index + ".pt"
+    pickle_path = "./pickles/balance/1_dim_softmax-" + model_index
+    pos_path = "./data/train.csv"
+    neg_path = "./data/balance/neg_train/neg_train-5.csv"
+    print()
+    print("pos_path:", pos_path)
+    print("neg_path:", neg_path)
+    print("model_path:", model_path)
+    print("pickle_path:", pickle_path)
+    print()
+
+    alldata = read_data(pos_path, neg_path)
     alldata = shuffle(alldata, random_state=random_state)
+
+    return alldata, model_path, pickle_path
+
+
+def op_shuffle_data_eval_exp(random_state):
+    """
+    Open data and return it as a DataFrame.
+    This function only open neg_train-1 (for prediction).
+    args:
+        random_state(int): set random seed for shuffle
+    """
+    # set path
+    model_index = str(input("Choose model_index(1~5) for evaluate data: "))
+    model_path = "./model/balance/final/neg_train-" + model_index + ".pt"
+    pickle_path = "./pickles/balance/exp-model-" + model_index  # save feature
+    pos_path = "./data/train.csv"
+    neg_path = "./data/balance/neg_train/neg_train-0.csv"
+    print()
+    print("pos_path:", pos_path)
+    print("neg_path:", neg_path)
+    print("model_path:", model_path)
+    print("pickle_path:", pickle_path)
+    print()
+
+    alldata = read_data(pos_path, neg_path)
+    alldata = shuffle(alldata, random_state=random_state)
+
     return alldata, model_path, pickle_path
 
 
 def k_fold_tensor(X_train, y_train, k, random_state):
     """
     K-Fold Cross Validation.
+
     Input:
         X_train(tensor): prediction of abstract
         y_train(tensor): ground truth
@@ -891,6 +953,38 @@ def k_fold_tensor(X_train, y_train, k, random_state):
     return train_list_x, train_list_y, cv_list_x, cv_list_y
 
 
+def calc_metirc(yhat, y, TP, FP, TN, FN):
+    # calu metric
+    TP += ((yhat == 1) & (y == 1)).sum().item()
+    FP += ((yhat == 1) & (y == 0)).sum().item()
+    TN += ((yhat == 0) & (y == 0)).sum().item()
+    FN += ((yhat == 0) & (y == 1)).sum().item()
+    return TP, FP, TN, FN
+
+
+def calc_auc(z, y, auc_y, auc_yhat):
+    prob_2dim = F.softmax(z, dim=1)
+    prob_1dim = prob_2dim[:, 1]
+    auc_y.extend(y.cpu().detach().numpy())
+    auc_yhat.extend(prob_1dim.cpu().detach().numpy())
+    return auc_y, auc_yhat
+
+
+def save_result(auc_y, auc_yhat, acc_, loss_, TP, FP, TN, FN, useful_stuff, mtype):
+
+    fpr, tpr, _ = metrics.roc_curve(auc_y, auc_yhat)
+    auc = metrics.auc(fpr, tpr)
+
+    useful_stuff[mtype + "_loss"].append(loss_)
+    useful_stuff[mtype + "_acc"].append(acc_)
+    useful_stuff[mtype + "_metric"].append((TP, FP, TN, FN))
+    useful_stuff[mtype + "_auc"].append(auc)
+    useful_stuff[mtype + "_fpr"].append(fpr)
+    useful_stuff[mtype + "_tpr"].append(tpr)
+
+    return useful_stuff
+
+
 def train_ensemble(
     model,
     train_dataloader,
@@ -909,14 +1003,20 @@ def train_ensemble(
         "training_acc": [],
         "training_auc": [],
         "training_metric": [],
+        "training_fpr": [],
+        "training_tpr": [],
         "train_loss": [],
         "train_acc": [],
         "train_auc": [],
         "train_metric": [],
+        "train_fpr": [],
+        "train_tpr": [],
         "valid_loss": [],
         "valid_acc": [],
         "valid_auc": [],
         "valid_metric": [],
+        "valid_fpr": [],
+        "valid_tpr": [],
     }
 
     for epoch in range(epochs):
@@ -939,24 +1039,16 @@ def train_ensemble(
             training_loss.append(loss.data.item())
 
             # calu metric
-            TP += ((yhat == 1) & (y == 1)).sum().item()
-            FP += ((yhat == 1) & (y == 0)).sum().item()
-            TN += ((yhat == 0) & (y == 0)).sum().item()
-            FN += ((yhat == 0) & (y == 1)).sum().item()
+            TP, FP, TN, FN = calc_metirc(yhat, y, TP, FP, TN, FN)
 
             # calu auc
-            auc_y.extend(y.cpu().detach().numpy())
-            auc_yhat.extend(yhat.cpu().detach().numpy())
+            auc_y, auc_yhat = calc_auc(z, y, auc_y, auc_yhat)
 
-        fpr, tpr, _ = metrics.roc_curve(auc_y, auc_yhat)
-        auc = metrics.auc(fpr, tpr)
         acc_ = correct / N_train
         loss_ = np.mean(training_loss)
-
-        useful_stuff["training_loss"].append(loss_)
-        useful_stuff["training_acc"].append(acc_)
-        useful_stuff["training_metric"].append((TP, FP, TN, FN))
-        useful_stuff["training_auc"].append(auc)
+        useful_stuff = save_result(
+            auc_y, auc_yhat, acc_, loss_, TP, FP, TN, FN, useful_stuff, mtype="training"
+        )
 
         # print("training loss: {0:.2f}".format(loss_))
         # print("training acc: {0:.2f}".format(acc_))
@@ -981,24 +1073,26 @@ def train_ensemble(
                 training_loss.append(loss.data.item())
 
                 # calu metric
-                TP += ((yhat == 1) & (y == 1)).sum().item()
-                FP += ((yhat == 1) & (y == 0)).sum().item()
-                TN += ((yhat == 0) & (y == 0)).sum().item()
-                FN += ((yhat == 0) & (y == 1)).sum().item()
+                TP, FP, TN, FN = calc_metirc(yhat, y, TP, FP, TN, FN)
 
                 # calu auc
-                auc_y.extend(y.cpu().detach().numpy())
-                auc_yhat.extend(yhat.cpu().detach().numpy())
+                auc_y, auc_yhat = calc_auc(z, y, auc_y, auc_yhat)
 
-            fpr, tpr, _ = metrics.roc_curve(auc_y, auc_yhat)
-            auc = metrics.auc(fpr, tpr)
             loss_ = np.mean(training_loss)
             acc_ = correct / N_train
 
-            useful_stuff["train_loss"].append(loss_)
-            useful_stuff["train_acc"].append(acc_)
-            useful_stuff["train_metric"].append((TP, FP, TN, FN))
-            useful_stuff["train_auc"].append(auc)
+            useful_stuff = save_result(
+                auc_y,
+                auc_yhat,
+                acc_,
+                loss_,
+                TP,
+                FP,
+                TN,
+                FN,
+                useful_stuff,
+                mtype="train",
+            )
 
             # print("train loss: {0:.2f}".format(loss_))
             # print("train acc: {0:.2f}".format(acc_))
@@ -1021,24 +1115,25 @@ def train_ensemble(
                 training_loss.append(loss.data.item())
 
                 # calu metric
-                TP += ((yhat == 1) & (y == 1)).sum().item()
-                FP += ((yhat == 1) & (y == 0)).sum().item()
-                TN += ((yhat == 0) & (y == 0)).sum().item()
-                FN += ((yhat == 0) & (y == 1)).sum().item()
+                TP, FP, TN, FN = calc_metirc(yhat, y, TP, FP, TN, FN)
 
                 # calu auc
-                auc_y.extend(y.cpu().detach().numpy())
-                auc_yhat.extend(yhat.cpu().detach().numpy())
+                auc_y, auc_yhat = calc_auc(z, y, auc_y, auc_yhat)
 
-            fpr, tpr, _ = metrics.roc_curve(auc_y, auc_yhat)
-            auc = metrics.auc(fpr, tpr)
             loss_ = np.mean(training_loss)
             acc_ = correct / N_test
-
-            useful_stuff["valid_loss"].append(loss_)
-            useful_stuff["valid_acc"].append(acc_)
-            useful_stuff["valid_metric"].append((TP, FP, TN, FN))
-            useful_stuff["valid_auc"].append(auc)
+            useful_stuff = save_result(
+                auc_y,
+                auc_yhat,
+                acc_,
+                loss_,
+                TP,
+                FP,
+                TN,
+                FN,
+                useful_stuff,
+                mtype="valid",
+            )
 
             # print("valid loss: {0:.2f}".format(loss_))
             # print("valid acc: {0:.2f}".format(acc_))
@@ -1048,6 +1143,140 @@ def train_ensemble(
         scheduler.step(loss_)
 
     return useful_stuff
+
+
+def eval_data_wiohout_train(
+    model,
+    train_dataloader,
+    validation_dataloader,
+    N_train,
+    N_test,
+    device,
+    criterion,
+):
+    """
+    eval the data.
+    """
+
+    useful_stuff = {
+        "train_loss": [],
+        "train_acc": [],
+        "train_auc": [],
+        "train_metric": [],
+        "valid_loss": [],
+        "valid_acc": [],
+        "valid_auc": [],
+        "valid_metric": [],
+    }
+
+    # train data
+    model.eval()
+    correct = 0
+    training_loss = []
+    TP = FP = TN = FN = 0
+    auc_y = []
+    auc_yhat = []
+
+    with torch.no_grad():
+        for x, y in train_dataloader:
+            x, y = x.to(device), y.to(device)
+            z = model(x)
+            _, yhat = torch.max(z.data, 1)
+            correct += (yhat == y).sum().item()
+            loss = criterion(z, y)
+            training_loss.append(loss.data.item())
+
+            # calu metric
+            TP += ((yhat == 1) & (y == 1)).sum().item()
+            FP += ((yhat == 1) & (y == 0)).sum().item()
+            TN += ((yhat == 0) & (y == 0)).sum().item()
+            FN += ((yhat == 0) & (y == 1)).sum().item()
+
+            # calu auc
+            auc_y.extend(y.cpu().detach().numpy())
+            auc_yhat.extend(yhat.cpu().detach().numpy())
+
+        fpr, tpr, _ = metrics.roc_curve(auc_y, auc_yhat)
+        auc = metrics.auc(fpr, tpr)
+        loss_ = np.mean(training_loss)
+        acc_ = correct / N_train
+
+        useful_stuff["train_loss"].append(loss_)
+        useful_stuff["train_acc"].append(acc_)
+        useful_stuff["train_metric"].append((TP, FP, TN, FN))
+        useful_stuff["train_auc"].append(auc)
+
+    # validation data
+    model.eval()
+    correct = 0
+    training_loss = []
+    TP = FP = TN = FN = 0
+    auc_y = []
+    auc_yhat = []
+
+    with torch.no_grad():
+        for x, y in validation_dataloader:
+            x, y = x.to(device), y.to(device)
+            z = model(x)
+            _, yhat = torch.max(z.data, 1)
+            correct += (yhat == y).sum().item()
+            loss = criterion(z, y)
+            training_loss.append(loss.data.item())
+
+            # calu metric
+            TP += ((yhat == 1) & (y == 1)).sum().item()
+            FP += ((yhat == 1) & (y == 0)).sum().item()
+            TN += ((yhat == 0) & (y == 0)).sum().item()
+            FN += ((yhat == 0) & (y == 1)).sum().item()
+
+            # calu auc
+            auc_y.extend(y.cpu().detach().numpy())
+            auc_yhat.extend(yhat.cpu().detach().numpy())
+
+        fpr, tpr, _ = metrics.roc_curve(auc_y, auc_yhat)
+        auc = metrics.auc(fpr, tpr)
+        loss_ = np.mean(training_loss)
+        acc_ = correct / N_test
+
+        useful_stuff["valid_loss"].append(loss_)
+        useful_stuff["valid_acc"].append(acc_)
+        useful_stuff["valid_metric"].append((TP, FP, TN, FN))
+        useful_stuff["valid_auc"].append(auc)
+
+    return useful_stuff
+
+
+def save_metrics(
+    path,
+    train_metric,
+    ACC,
+    LOSS,
+    RECALL,
+    SPECIFICITY,
+    PRECISION,
+    NPV,
+    F1,
+    MCC,
+    AUC,
+):
+    """
+    save metrics as csv files
+    """
+    with open(path, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile, delimiter="\t")
+        if train_metric:
+            writer.writerow(["[Train average]"])
+        else:
+            writer.writerow(["[valid average]"])
+        writer.writerow(["ACC: {:.2}".format((np.mean(ACC)))])
+        writer.writerow(["LOSS: {:.2}".format(np.mean(LOSS))])
+        writer.writerow(["Recall: {:.2}".format(np.mean(RECALL))])
+        writer.writerow(["Specificity: {:.2}".format(np.mean(SPECIFICITY))])
+        writer.writerow(["Precision: {:.2}".format(np.mean(PRECISION))])
+        writer.writerow(["NPV: {:.2}".format(np.mean(NPV))])
+        writer.writerow(["F1: {:.2}".format(np.mean(F1))])
+        writer.writerow(["MCC: {:.2}".format(np.mean(MCC))])
+        writer.writerow(["AUC: {:.2}".format(np.mean(AUC))])
 
 
 def calc_metric_ensemble(training_history, fig_path, train_metric=True, detail=False):
@@ -1064,17 +1293,23 @@ def calc_metric_ensemble(training_history, fig_path, train_metric=True, detail=F
     F1 = []
     MCC = []
     AUC = []
+    FPR = []
+    TPR = []
 
     for i in range(len(training_history)):
 
         if train_metric:
             (TP, FP, TN, FN) = training_history[i]["train_metric"][-1]
             auc = training_history[i]["train_auc"][-1]
+            fpr = training_history[i]["train_fpr"][-1]
+            tpr = training_history[i]["train_tpr"][-1]
             loss = training_history[i]["train_loss"][-1]
             path = fig_path + "train.txt"
         else:
             (TP, FP, TN, FN) = training_history[i]["valid_metric"][-1]
             auc = training_history[i]["valid_auc"][-1]
+            fpr = training_history[i]["valid_fpr"][-1]
+            tpr = training_history[i]["valid_tpr"][-1]
             loss = training_history[i]["valid_loss"][-1]
             path = fig_path + "valid.txt"
 
@@ -1128,6 +1363,8 @@ def calc_metric_ensemble(training_history, fig_path, train_metric=True, detail=F
             print("f1:", f1)
             print("mcc:", mcc)
             print("auc:", auc)
+            print("fpr:", fpr)
+            print("tpr:", tpr)
             print("=" * 40)
 
         ACC.append(acc)
@@ -1139,6 +1376,8 @@ def calc_metric_ensemble(training_history, fig_path, train_metric=True, detail=F
         F1.append(f1)
         MCC.append(mcc)
         AUC.append(auc)
+        FPR.append(fpr)
+        TPR.append(tpr)
 
     if train_metric:
         print("\n[Training average]\n")
@@ -1158,21 +1397,19 @@ def calc_metric_ensemble(training_history, fig_path, train_metric=True, detail=F
     print()
 
     # save result
-    with open(path, "w", newline="", encoding="utf-8") as csvfile:
-        writer = csv.writer(csvfile, delimiter="\t")
-        if train_metric:
-            writer.writerow(["[Train average]"])
-        else:
-            writer.writerow(["[valid average]"])
-        writer.writerow(["ACC: {:.2}".format((np.mean(ACC)))])
-        writer.writerow(["LOSS: {:.2}".format(np.mean(LOSS))])
-        writer.writerow(["Recall: {:.2}".format(np.mean(RECALL))])
-        writer.writerow(["Specificity: {:.2}".format(np.mean(SPECIFICITY))])
-        writer.writerow(["Precision: {:.2}".format(np.mean(PRECISION))])
-        writer.writerow(["NPV: {:.2}".format(np.mean(NPV))])
-        writer.writerow(["F1: {:.2}".format(np.mean(F1))])
-        writer.writerow(["MCC: {:.2}".format(np.mean(MCC))])
-        writer.writerow(["AUC: {:.2}".format(np.mean(AUC))])
+    save_metrics(
+        path,
+        train_metric,
+        ACC,
+        LOSS,
+        RECALL,
+        SPECIFICITY,
+        PRECISION,
+        NPV,
+        F1,
+        MCC,
+        AUC,
+    )
 
 
 def plot_lc_ensemble(training_history, fig_path):
@@ -1212,7 +1449,7 @@ def plot_lc_ensemble(training_history, fig_path):
     plt.legend()
     plt.title("training / valid loss vs iterations")
     plt.grid()
-    plt.savefig(fig_path + "loss" + ".png")
+    plt.savefig(fig_path + "loss" + ".png", bbox_inches="tight")
     plt.close()
 
     # train acc
@@ -1243,33 +1480,146 @@ def plot_lc_ensemble(training_history, fig_path):
     plt.legend()
     plt.title("training / valid acc vs iterations")
     plt.grid()
-    plt.savefig(fig_path + "acc" + ".png")
+    plt.savefig(fig_path + "acc" + ".png", bbox_inches="tight")
+    plt.close()
+
+    # roc
+    plot_roc(training_history, fig_path, mtype="train")
+    plot_roc(training_history, fig_path, mtype="valid")
+
+
+def plot_roc(training_history, fig_path, mtype="train"):
+    """
+    plot roc curve and save as png
+    """
+    for i in range(len(training_history)):
+        auc = training_history[i][mtype + "_auc"][-1]
+        fpr = training_history[i][mtype + "_fpr"][-1]
+        tpr = training_history[i][mtype + "_tpr"][-1]
+
+        plt.plot(fpr, tpr, label="Fold-" + str(i) + " AUC = %0.2f" % auc)
+
+    plt.title(mtype + " roc curve")
+    plt.legend(loc="lower right")
+    plt.plot([0, 1], [0, 1], "r--")
+    plt.xlim([0, 1])
+    plt.ylim([0, 1])
+    plt.ylabel("True Positive Rate")
+    plt.xlabel("False Positive Rate")
+    plt.savefig(fig_path + mtype + "-roc" + ".png", bbox_inches="tight")
     plt.close()
 
 
-def op_data_ensemble():
+def concate_feature(path_list, pathy):
+    """
+    concate feature x.
+    args:
+        path_list(list): list containing feature path
+        pathy(str): target path
+    """
+
+    X_list = []
+    for path in path_list:
+        with open(path, "rb") as f:
+            print("load path:", path)
+            X_list.append(torch.tensor(pickle.load(f)).reshape(-1, 1))  # check_dim
+
+    # load target
+    with open(pathy, "rb") as f:
+        print("load path:", pathy)
+        y_list = pickle.load(f)
+
+    # stacking 5 features (1280, 1) -> (1280, 5) / (1280, 10)
+    X = torch.cat((X_list[0], X_list[1], X_list[2], X_list[3], X_list[4]), 1)
+    print("X.shape:", X.shape)
+    # label
+    y = torch.tensor(y_list)
+    print("y.shape:", y.shape)
+    return X, y
+
+
+def op_data_ensemble(exp=False, shuffle=False):
     """
     Open data and return as tensor.
-    Args:
-        input: None
 
-        output: X(tensor): Features with shape (len, 5)
-                y(tesnor): Leabel with shape (len)
+    input:
+        exp(bool): whether in experiment
+        shuffle(bool): whether shuffle data
+
+    output:
+        X(tensor): Features with shape (len, 5)
+        y(tesnor): Leabel with shape (len)
     """
+
     # set path
-    pathx_1 = "./pickles/balance/model-0-X.pkl"
-    pathx_2 = "./pickles/balance/model-1-X.pkl"
-    pathx_3 = "./pickles/balance/model-2-X.pkl"
-    pathx_4 = "./pickles/balance/model-3-X.pkl"
-    pathx_5 = "./pickles/balance/model-4-X.pkl"
-    pathy = "./pickles/balance/model-0-y.pkl"  # all the same
-    fig_path = "./pics/balance/ensemble/"
-    model_path = "./model/balance/ensemble/"
-    history_path = "./history/balance/ensemble/ensemble.pkl"
+    pathx_1 = "./pickles/balance/1_dim_softmax-0-X.pkl"
+    pathx_2 = "./pickles/balance/1_dim_softmax-1-X.pkl"
+    pathx_3 = "./pickles/balance/1_dim_softmax-2-X.pkl"
+    pathx_4 = "./pickles/balance/1_dim_softmax-3-X.pkl"
+    pathx_5 = "./pickles/balance/1_dim_softmax-4-X.pkl"
+    pathy = "./pickles/balance/1_dim_softmax-y.pkl"  # all the same
+
+    if not exp:
+        fig_path = "./pics/balance/ensemble/"
+        model_path = "./model/balance/ensemble/"
+        history_path = "./history/balance/ensemble/ensemble.pkl"
+    else:
+        fig_path = "./pics/balance/ensemble/exp/"
+        model_path = "./model/balance/ensemble/exp/"
+        history_path = "./history/balance/ensemble/exp/ensemble.pkl"
 
     print("fig_path:", fig_path)
     print("model_path:", model_path)
     print("history_path:", history_path)
+    print("shuffle data:", shuffle)
+    print()
+
+    # load feture
+    path_list = [pathx_1, pathx_2, pathx_3, pathx_4, pathx_5]
+    X, y = concate_feature(path_list, pathy)
+
+    # shuffle data
+    if shuffle:
+        rand_idx = torch.randperm(X.size()[0])
+        X = X[rand_idx]
+        y = y[rand_idx]
+
+    return X, y, fig_path, model_path, history_path
+
+
+def op_data_ensemble_exp(exp=False, shuffle=False):
+    """
+    Open data and return as tensor.
+
+    input:
+        exp(bool): whether in experiment
+        shuffle(bool): whether shuffle data
+
+    output:
+        X(tensor): Features with shape (len, 5)
+        y(tesnor): Leabel with shape (len)
+    """
+    # set path
+    pathx_1 = "./pickles/balance/exp-model-1-X.pkl"
+    pathx_2 = "./pickles/balance/exp-model-2-X.pkl"
+    pathx_3 = "./pickles/balance/exp-model-3-X.pkl"
+    pathx_4 = "./pickles/balance/exp-model-4-X.pkl"
+    pathx_5 = "./pickles/balance/exp-model-5-X.pkl"
+    pathy = "./pickles/balance/exp-model-1-y.pkl"  # all the same
+
+    if not exp:
+        fig_path = "./pics/balance/ensemble/"
+        model_path = "./model/balance/ensemble/"
+        history_path = "./history/balance/ensemble/ensemble.pkl"
+    else:
+        fig_path = "./pics/balance/ensemble/exp/"
+        model_path = "./model/balance/ensemble/exp/"
+        history_path = "./history/balance/ensemble/exp/ensemble.pkl"
+
+    print("fig_path:", fig_path)
+    print("model_path:", model_path)
+    print("history_path:", history_path)
+    print("shuffle data:", shuffle)
     print()
 
     # load feture
@@ -1277,12 +1627,12 @@ def op_data_ensemble():
     X_list = []
     for path in path_list:
         with open(path, "rb") as f:
-            print("load path:", path)
+            print("load feature:", path)
             X_list.append(torch.tensor(pickle.load(f)).reshape(-1, 1))
 
     # load target
     with open(pathy, "rb") as f:
-        print("load path:", pathy)
+        print("load target:", pathy)
         y_list = pickle.load(f)
 
     # stacking 5 features (1280, 1) -> (1280, 5)
@@ -1290,6 +1640,12 @@ def op_data_ensemble():
 
     # label
     y = torch.tensor(y_list)
+
+    # shuffle data
+    if shuffle:
+        rand_idx = torch.randperm(X.size()[0])
+        X = X[rand_idx]
+        y = y[rand_idx]
 
     return X, y, fig_path, model_path, history_path
 
@@ -1312,12 +1668,14 @@ class Data(Dataset):
 
 class Net(nn.Module):
     # Constructor
-    def __init__(self, neuron=10, p=0):
+    def __init__(self, input_dim, neuron=10, p=0):
         super(Net, self).__init__()
+        self.input_dim = input_dim
         self.neuron = neuron
         self.layer = torch.nn.Sequential(
+            nn.Dropout(p=0.1),
             # 1
-            nn.Linear(5, self.neuron),
+            nn.Linear(self.input_dim, self.neuron),
             nn.BatchNorm1d(self.neuron),
             nn.ReLU(),
             nn.Dropout(p=p),
@@ -1328,7 +1686,20 @@ class Net(nn.Module):
             nn.Dropout(p=p),
             # 3
             nn.Linear(self.neuron, 2),
+            # nn.Linear(5, 2)
         )
+
+    def forward(self, x):
+        x = self.layer(x)
+        return x
+
+
+class Linear_net(nn.Module):
+    # Constructor
+    def __init__(self, input_dim):
+        super(Linear_net, self).__init__()
+        self.input_dim = input_dim
+        self.layer = torch.nn.Sequential(nn.Linear(self.input_dim, 2))
 
     def forward(self, x):
         x = self.layer(x)
